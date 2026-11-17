@@ -10,13 +10,13 @@ Data Science Associate at [Wio Bank](https://www.wio.io/) and MS Business Analyt
 
 | Project | What it is | Status |
 |---|---|---|
-| **[InvestEdge](https://github.com/AnayPatel-P/investedge)** | Forecasting, honestly. Runs ARIMA, ETS, Prophet and GARCH on every S&P 500 stock, then replays a year of old forecasts against what really happened. Nightly pipeline → DuckDB → static React app, plus an optional Claude tutor that looks numbers up instead of guessing. [Live demo](https://anaypatel-p.github.io/investedge/) | **Live** |
+| **[InvestEdge](https://github.com/AnayPatel-P/investedge)** | Forecasting, honestly. Runs ARIMA, ETS, Prophet and GARCH on every S&P 500 stock, then replays a year of old forecasts against what really happened. Drag the chart like a barograph drum back to a past date and watch reality ink itself through the forecasts. Nightly pipeline → DuckDB → static React app, plus an optional Claude tutor that looks numbers up instead of guessing. [Live demo](https://anaypatel-p.github.io/investedge/) | **Live** |
 | **[Plotted](https://github.com/AnayPatel-P/plotted)** | Plan your degree semester by semester against your school's real catalog. Python scrapers → rule trees → a TypeScript requirement and prerequisite engine in the browser; Next.js + Supabase. Lighthouse 100, 0 axe violations. [Live app](https://plotted-cyan.vercel.app) | **Live** |
-| **[MarketLens](https://github.com/AnayPatel-P/MarketLens)** | Real-time stock watchlist: FastAPI REST + WebSockets, React/TypeScript, TradingView charts, Docker Compose. Being rebuilt with a volatility-forecasting component. | Rebuilding |
+| **[MarketLens](https://github.com/AnayPatel-P/MarketLens)** | A stock dashboard that writes its own headline: live watchlist, technical charts and real portfolio P&L against the same money in the S&P 500. FastAPI indicators + Decimal P&L, one Alpaca stream fanned out over WebSockets, Supabase with row-level security, Fly.io. [Live app](https://marketlens-live.fly.dev) | **Live** |
 
 ## How I build with AI
 
-I write Claude skills: reusable workflows with phases, gates, output contracts and guardrails. InvestEdge, Plotted and my portfolio site were planned with **project-manager** and designed with **original-ui**.
+I write Claude skills: reusable workflows with phases, gates, output contracts and guardrails. InvestEdge, Plotted, MarketLens and my portfolio site were planned with **project-manager** and designed with **original-ui**.
 
 ```mermaid
 flowchart LR
@@ -26,7 +26,7 @@ flowchart LR
   X --> Bu["40 Build<br/>project-manager · original-ui"]
   T[teach] -.-> Bu
   A[agent-builder] -.-> Bu
-  Bu --> S["50 Shipped<br/>InvestEdge · Plotted"]
+  Bu --> S["50 Shipped<br/>InvestEdge · Plotted · MarketLens"]
 ```
 
 | Skill | What it does |
