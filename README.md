@@ -11,7 +11,7 @@ Data Science Associate at [Wio Bank](https://www.wio.io/) and MS Business Analyt
 | Project | What it is | Status |
 |---|---|---|
 | **[InvestEdge](https://github.com/AnayPatel-P/investedge)** | Forecasting, honestly. Runs ARIMA, ETS, Prophet and GARCH on every S&P 500 stock, then replays a year of old forecasts against what really happened. Nightly pipeline → DuckDB → static React app, plus an optional Claude tutor that looks numbers up instead of guessing. [Live demo](https://anaypatel-p.github.io/investedge/) | **Live** |
-| **[Plotted](https://github.com/AnayPatel-P/plotted)** | Plan your degree semester by semester against your school's real catalog. Python scrapers → rule trees → a TypeScript requirement and prerequisite engine in the browser; Next.js + Supabase. Lighthouse 100, 0 axe violations. | Deploying soon |
+| **[Plotted](https://github.com/AnayPatel-P/plotted)** | Plan your degree semester by semester against your school's real catalog. Python scrapers → rule trees → a TypeScript requirement and prerequisite engine in the browser; Next.js + Supabase. Lighthouse 100, 0 axe violations. [Live app](https://plotted-cyan.vercel.app) | **Live** |
 | **[MarketLens](https://github.com/AnayPatel-P/MarketLens)** | Real-time stock watchlist: FastAPI REST + WebSockets, React/TypeScript, TradingView charts, Docker Compose. Being rebuilt with a volatility-forecasting component. | Rebuilding |
 
 ## How I build with AI
