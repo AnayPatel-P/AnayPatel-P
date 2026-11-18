@@ -1,0 +1,27 @@
+{
+  "profile_repo": "AnayPatel-P/AnayPatel-P",
+  "site_repo": "AnayPatel-P/anaypatel-p.github.io",
+  "projects": [
+    {
+      "name": "InvestEdge",
+      "repo": "AnayPatel-P/investedge",
+      "live_url": "https://anaypatel-p.github.io/investedge/",
+      "site_article_id": "p-investedge",
+      "readme_row": "InvestEdge"
+    },
+    {
+      "name": "Plotted",
+      "repo": "AnayPatel-P/plotted",
+      "live_url": "https://plotted-cyan.vercel.app",
+      "site_article_id": "p-plotted",
+      "readme_row": "Plotted"
+    },
+    {
+      "name": "MarketLens",
+      "repo": "AnayPatel-P/MarketLens",
+      "live_url": "https://marketlens-live.fly.dev",
+      "site_article_id": "p-marketlens",
+      "readme_row": "MarketLens"
+    }
+  ]
+}

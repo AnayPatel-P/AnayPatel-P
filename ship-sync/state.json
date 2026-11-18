@@ -1,0 +1,8 @@
+{
+  "_note": "Seed state. The live copy is on the ship-sync/state branch; the routine reads that branch first and falls back to this file. Each SHA is the last project commit the public copy was checked against.",
+  "projects": {
+    "InvestEdge": { "synced_sha": "80a19b5f78fcbc2195cad24169f15f781165aa41", "synced_at": "2026-11-17" },
+    "Plotted": { "synced_sha": "10bcc4667982be12b3b62f3ddb8ce3350cb48ed8", "synced_at": "2026-11-17" },
+    "MarketLens": { "synced_sha": "26dbb20e8f504b06715e24191235b41806bf23c2", "synced_at": "2026-11-17" }
+  }
+}
