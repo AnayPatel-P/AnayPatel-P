@@ -124,3 +124,82 @@ test('empty and truncated flags', () => {
   assert.equal(onlyArchived.truncated, true);
   assert.equal(deriveBoard([sess('w', 'WORKING', null)]).empty, false);
 });
+
+// ---- Task 3 ----
+const { humanizeCron, triggerCard, extractTurns, standupMessages, errorView } = L;
+
+test('humanizeCron known and fallback', () => {
+  assert.equal(humanizeCron('0 3 * * *'), 'Daily at 03:00 UTC');
+  assert.equal(humanizeCron('37 8 * * 1-5'), 'Weekdays at 08:37 UTC');
+  assert.equal(humanizeCron('0 * * * *'), 'Hourly');
+  assert.equal(humanizeCron('CRON_TZ=America/Los_Angeles 37 8 * * 1-5'), 'Weekdays at 08:37 (America/Los_Angeles)');
+  assert.equal(humanizeCron('CRON_TZ=Asia/Dubai 5 7 * * *'), 'Daily at 07:05 (Asia/Dubai)');
+  assert.equal(humanizeCron('*/15 * * * *'), '*/15 * * * *');
+  assert.equal(humanizeCron(''), 'No schedule');
+  assert.equal(humanizeCron(undefined), 'No schedule');
+});
+
+test('triggerCard statuses', () => {
+  const now = Date.parse('2026-11-18T12:00:00Z');
+  const base = { id: 'trig_1', name: 'AI Brief', cron_expression: '0 3 * * *', enabled: true, next_run_at: '2026-11-19T03:01:00Z' };
+  const ok = triggerCard({ ...base, last_run: { status: 'ROUTINE_RUN_STATUS_SUCCEEDED', fired_at: '2026-11-18T03:01:00Z', session_id: 'cse_9' } }, now);
+  assert.equal(ok.id, 'trig_1');
+  assert.equal(ok.name, 'AI Brief');
+  assert.equal(ok.schedule, 'Daily at 03:00 UTC');
+  assert.equal(ok.enabled, true);
+  assert.equal(ok.nextRun, '2026-11-19T03:01:00Z');
+  assert.deepEqual(ok.last, { label: 'Succeeded', ok: true, when: '8h ago', sessionUrl: 'https://claude.ai/code/cse_9' });
+  const bad = triggerCard({ ...base, last_run: { status: 'ROUTINE_RUN_STATUS_FAILED', fired_at: '2026-11-18T03:01:00Z' } }, now);
+  assert.equal(bad.last.label, 'Failed'); assert.equal(bad.last.ok, false); assert.equal(bad.last.sessionUrl, null);
+  const run = triggerCard({ ...base, last_run: { status: 'ROUTINE_RUN_STATUS_RUNNING', fired_at: '2026-11-18T11:59:00Z' } }, now);
+  assert.equal(run.last.label, 'Running'); assert.equal(run.last.ok, null);
+  const never = triggerCard({ ...base, name: '' }, now);
+  assert.equal(never.last.label, 'Never run'); assert.equal(never.last.ok, null); assert.equal(never.last.when, '');
+  assert.equal(never.name, 'Untitled task');
+});
+
+test('extractTurns shapes and order', () => {
+  const cat = (kind, content, at, extra = {}) => ({ created_at: at, [kind]: { internal_anthropic_catchall: { message: { content }, ...extra } } });
+  const events = [
+    cat('user', 'Build the landing page', '2026-11-18T10:00:00Z'),
+    cat('user', [{ type: 'tool_result', content: [{ type: 'text', text: 'internal' }] }], '2026-11-18T10:00:30Z'),
+    cat('assistant', [{ type: 'text', text: 'On it.' }, { type: 'tool_use', name: 'Bash' }, { type: 'text', text: 'Done.' }], '2026-11-18T10:01:00Z'),
+    cat('assistant', [{ type: 'tool_use', name: 'Read' }], '2026-11-18T10:01:10Z'),
+    { created_at: '2026-11-18T10:02:00Z', result: { internal_anthropic_catchall: { is_error: true, subtype: 'error' } } },
+    { created_at: '2026-11-18T10:03:00Z', user: { message: { content: [{ type: 'text', text: 'x'.repeat(700) }] } } },
+  ];
+  const t = extractTurns(events);
+  assert.deepEqual(t.map(x => x.role), ['you', 'agent', 'end', 'you']);
+  assert.equal(t[0].text, 'Build the landing page');
+  assert.equal(t[1].text, 'On it.\n\nDone.');
+  assert.equal(t[2].text, 'Turn ended with an error');
+  assert.equal(t[3].text.length, 601);
+  assert.ok(t[3].text.endsWith('…'));
+  assert.equal(t[0].at, '2026-11-18T10:00:00Z');
+  assert.equal(extractTurns([{ result: { internal_anthropic_catchall: { is_error: false } } }])[0].text, 'Turn finished');
+});
+
+test('standupMessages includes needsYou and excludes old done', () => {
+  const now = Date.parse('2026-11-18T12:00:00Z');
+  const board = deriveBoard([
+    sess('old', 'COMPLETED', '2026-11-15T12:00:00Z'),
+    sess('oldblocked', 'BLOCKED', '2026-11-10T12:00:00Z'),
+    sess('fresh', 'COMPLETED', '2026-11-18T11:00:00Z'),
+    sess('busy', 'WORKING', '2026-11-18T11:30:00Z'),
+  ]);
+  const p = standupMessages(board, now);
+  assert.match(p, /4–8 plain-language bullets/);
+  assert.match(p, /- \[Waiting on you\] T oldblocked — did oldblocked \(updated 8d ago\)/);
+  assert.match(p, /- \[Done\] T fresh — did fresh \(updated 1h ago\)/);
+  assert.match(p, /- \[Working\] T busy/);
+  assert.doesNotMatch(p, /T old —/);
+});
+
+test('errorView codes', () => {
+  const k = c => errorView(c).kind;
+  for (const c of ['needs_reauth', 'server_not_connected', 'selection_required', 'blocked_by_policy', 'approval_required', 'not_in_manifest', 'consent_required', 'not_granted', 'capability_disabled', 'capability_removed']) assert.equal(k(c), 'hide', c);
+  for (const c of ['server_unavailable', 'rate_limited']) assert.equal(k(c), 'retry', c);
+  assert.equal(k('weird_new_code'), 'info');
+  assert.match(errorView('needs_reauth').text, /Reconnect Claude Code Remote/);
+  assert.match(errorView('approval_required').text, /Allow Claude Code Remote/);
+});
