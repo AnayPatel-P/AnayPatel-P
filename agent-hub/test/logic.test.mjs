@@ -258,6 +258,7 @@ test('describeTrigger uses written descriptions for known agents', () => {
   assert.match(describeTrigger({ id: 'trig_012V1kNzrYBaotooJtEu75fA' }), /pull requests/);
   assert.match(describeTrigger({ id: 'trig_01HURaF6FpnLb7h6575NNAS6' }), /issues/);
   assert.match(describeTrigger({ id: 'trig_01JNt6adt4hzK39JGjeh9r6J' }), /newsletter/);
+  assert.match(describeTrigger({ id: 'trig_0166mbA7ELuzva3Dk7YNmLGm' }), /regression/);
 });
 
 test('describeTrigger falls back to the first sentence of the instructions', () => {
