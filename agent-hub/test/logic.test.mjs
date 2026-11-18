@@ -197,9 +197,35 @@ test('standupMessages includes needsYou and excludes old done', () => {
 
 test('errorView codes', () => {
   const k = c => errorView(c).kind;
-  for (const c of ['needs_reauth', 'server_not_connected', 'selection_required', 'blocked_by_policy', 'approval_required', 'not_in_manifest', 'consent_required', 'not_granted', 'capability_disabled', 'capability_removed']) assert.equal(k(c), 'hide', c);
+  for (const c of ['needs_reauth', 'server_not_connected', 'selection_required', 'blocked_by_policy', 'not_in_manifest', 'not_granted', 'capability_disabled', 'capability_removed']) assert.equal(k(c), 'hide', c);
   for (const c of ['server_unavailable', 'rate_limited']) assert.equal(k(c), 'retry', c);
   assert.equal(k('weird_new_code'), 'info');
   assert.match(errorView('needs_reauth').text, /Reconnect Claude Code Remote/);
   assert.match(errorView('approval_required').text, /Allow Claude Code Remote/);
+});
+
+// ---- Final review fixes ----
+const { mergeEvents } = L;
+
+test('mergeEvents keeps history when the newest page is empty', () => {
+  const ev = (id, kind = 'user') => ({ created_at: id, [kind]: { uuid: id, internal_anthropic_catchall: { message: { content: id } } } });
+  const older = [ev('a'), ev('b')];
+  assert.deepEqual(mergeEvents(older, []).map(e => e.user.uuid), ['a', 'b']);
+  assert.deepEqual(mergeEvents(older, [ev('b'), ev('c')]).map(e => e.user.uuid), ['a', 'b', 'c']);
+  assert.deepEqual(mergeEvents([], [ev('x')]).map(e => e.user.uuid), ['x']);
+});
+
+test('urgent helpers surface in needsYou', () => {
+  const b = deriveBoard([
+    sess('p', 'COMPLETED', '2026-11-18T07:00:00Z'),
+    sess('h', 'BLOCKED', '2026-11-18T08:00:00Z', { parent_session_id: 'p' }),
+  ]);
+  assert.deepEqual(b.needsYou.map(c => c.id), ['h']);
+  assert.equal(b.counts.blocked, 1);
+  assert.deepEqual(b.done[0].helpers.map(c => c.id), ['h']);
+});
+
+test('approval_required offers an allow step', () => {
+  assert.equal(errorView('approval_required').kind, 'approve');
+  assert.equal(errorView('consent_required').kind, 'approve');
 });

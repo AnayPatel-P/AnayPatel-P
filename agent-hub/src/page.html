@@ -49,6 +49,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--fg);
   font-family: var(--font-body); font-size: 15px; line-height: 1.45;
@@ -190,7 +191,7 @@ textarea { width: 100%; min-height: 84px; font: inherit; color: var(--fg); backg
   <section id="needs" aria-labelledby="needs-h">
     <h2 id="needs-h">Needs you <span id="needs-count" class="count">0</span></h2>
     <div id="needs-list" class="inbox"></div>
-    <p id="needs-empty" class="empty">Nothing needs you right now. Agents that are waiting on you, failed, or ready for review show up here.</p>
+    <p id="needs-empty" class="empty" hidden>Nothing needs you right now. Agents that are waiting on you, failed, or ready for review show up here.</p>
   </section>
 
   <section id="team" aria-labelledby="team-h">
@@ -201,14 +202,14 @@ textarea { width: 100%; min-height: 84px; font: inherit; color: var(--fg); backg
     <nav id="summary" aria-label="Filter by status"></nav>
     <p id="board-note" class="inline-note" hidden></p>
     <div id="board"></div>
-    <p id="board-empty" class="empty">No agents yet. Start a Claude Code session and it shows up here.</p>
+    <p id="board-empty" class="empty" hidden>No agents yet. Start a Claude Code session and it shows up here.</p>
   </section>
 
   <section id="crew" aria-labelledby="crew-h">
     <h2 id="crew-h">Scheduled</h2>
     <p id="crew-note" class="inline-note" hidden></p>
     <div id="crew-list" class="inbox"></div>
-    <p id="crew-empty" class="empty">No scheduled tasks.</p>
+    <p id="crew-empty" class="empty" hidden>No scheduled tasks.</p>
   </section>
 
   <section id="standup" aria-labelledby="standup-h">

@@ -83,6 +83,12 @@
       else if (k === 'working') { board.working.push(c); board.counts.working++; }
       else { board.done.push(c); board.counts.done++; }
     });
+    top.forEach(function (c) {
+      if (c.status.key === 'archived') return;
+      c.helpers.forEach(function (hc) {
+        if (hc.status.urgent) { board.needsYou.push(hc); board.counts[hc.status.key]++; }
+      });
+    });
     board.needsYou.sort(function (a, b) { return (a.status.rank - b.status.rank) || byUpdatedDesc(a, b); });
     board.working.sort(byUpdatedDesc);
     board.done.sort(byUpdatedDesc);
@@ -160,6 +166,19 @@
     return out;
   }
 
+  function eventKey(ev) {
+    var b = ev && (ev.user || ev.assistant || ev.result) || {};
+    return b.uuid || (ev && ev.created_at) || '';
+  }
+
+  function mergeEvents(older, newest) {
+    var fresh = newest || [];
+    if (!fresh.length) return (older || []).slice();
+    var seen = {};
+    fresh.forEach(function (e) { seen[eventKey(e)] = true; });
+    return (older || []).filter(function (e) { return !seen[eventKey(e)]; }).concat(fresh);
+  }
+
   function standupMessages(board, nowMs) {
     var dayAgo = nowMs - 24 * 3600 * 1000;
     var recent = function (c) { return (Date.parse(c.updatedAt) || 0) >= dayAgo; };
@@ -181,8 +200,8 @@
       case 'selection_required': return { kind: 'hide', text: 'Add or choose the ' + CONNECT + ' connector in claude.ai Settings → Connectors.' };
       case 'blocked_by_policy': return { kind: 'hide', text: "Your organization doesn't allow this." };
       case 'approval_required':
-      case 'not_in_manifest':
-      case 'consent_required': return { kind: 'hide', text: 'Allow ' + CONNECT + ' for this page to see your agents.' };
+      case 'consent_required': return { kind: 'approve', text: 'Allow ' + CONNECT + ' for this page to see your agents.' };
+      case 'not_in_manifest': return { kind: 'hide', text: CONNECT + ' is turned off for this page. Turn it on in the page\'s Permissions menu.' };
       case 'not_granted':
       case 'capability_disabled':
       case 'capability_removed': return { kind: 'hide', text: "Live agent data isn't available in this view. Open the page in claude.ai." };
@@ -194,7 +213,7 @@
 
   var api = { unwrap: unwrap, statusOf: statusOf, relativeTime: relativeTime, deriveBoard: deriveBoard,
     humanizeCron: humanizeCron, triggerCard: triggerCard, extractTurns: extractTurns,
-    standupMessages: standupMessages, errorView: errorView, STATUSES: STATUSES };
+    standupMessages: standupMessages, errorView: errorView, mergeEvents: mergeEvents, STATUSES: STATUSES };
   root.HubLogic = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

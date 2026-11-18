@@ -35,6 +35,7 @@
     mcp: null, tools: new Set(), sessions: [], hasMore: false, triggers: [],
     showArchived: false, filter: null, updatedAt: null,
     err: { sessions: null, triggers: null }, board: null,
+    loaded: { sessions: false, triggers: false }, keys: { sessions: '', triggers: '' },
     sheet: { id: null, unwatch: null, events: [], backfilled: false, opener: null }
   };
   function has(tool) { return state.tools.has(tool); }
@@ -91,7 +92,7 @@
       h('div', { class: 'card-top' }, pill(c.status),
         c.where ? h('span', { class: 'where', text: c.where }) : null,
         c.unread ? h('span', { class: 'dot', title: 'Unread', 'aria-label': 'Unread' }) : null),
-      h('button', { type: 'button', class: 'card-title', style: 'all:unset;cursor:pointer', onclick: open, text: c.title }),
+      h('button', { type: 'button', class: 'card-title', 'data-id': c.id, style: 'all:unset;cursor:pointer', onclick: open, text: c.title }),
       h('p', { class: 'card-summary', style: 'margin:0', text: c.summary }),
       h('div', { class: 'card-foot' },
         h('span', { text: L.relativeTime(c.updatedAt, now()) }),
@@ -104,12 +105,12 @@
     var b = L.deriveBoard(state.sessions, { showArchived: state.showArchived, hasMore: state.hasMore });
     state.board = b;
     var err = state.err.sessions;
-    var hidden = err && err.kind === 'hide';
+    var hidden = err && (err.kind === 'hide' || err.kind === 'approve');
     if (hidden) b = L.deriveBoard([], {});
 
     $('needs-list').replaceChildren.apply($('needs-list'), b.needsYou.map(inboxItem));
     $('needs-count').textContent = String(b.needsYou.length);
-    $('needs-empty').hidden = b.needsYou.length > 0 || hidden;
+    $('needs-empty').hidden = b.needsYou.length > 0 || hidden || !state.loaded.sessions;
 
     var counts = b.counts;
     $('summary').replaceChildren.apply($('summary'), CHIPS.filter(function (ch) { return counts[ch.key] > 0 || state.filter === ch.key; }).map(function (ch) {
@@ -120,14 +121,22 @@
 
     var all = b.needsYou.concat(b.working, b.done, b.archived).filter(matchesFilter);
     $('board').replaceChildren.apply($('board'), all.map(card));
-    $('board-empty').hidden = !b.empty || hidden;
+    $('board-empty').hidden = !b.empty || hidden || !state.loaded.sessions;
 
     var note = $('board-note');
-    if (err) { note.textContent = err.text; note.hidden = false; }
+    if (err) { setNote(note, err); }
     else if (b.truncated) { note.textContent = 'Showing your 50 most recent agents.'; note.hidden = false; }
     else if (state.filter && !all.length) { note.textContent = 'No agents match this filter.'; note.hidden = false; }
     else note.hidden = true;
     renderNotice();
+  }
+
+  function setNote(note, err) {
+    note.replaceChildren(err.text);
+    if (err.kind === 'approve' && err.allow) {
+      note.append(' ', h('button', { type: 'button', class: 'btn', text: 'Allow', onclick: err.allow }));
+    }
+    note.hidden = false;
   }
 
   // ---------- Scheduled crew ----------
@@ -175,12 +184,12 @@
 
   function renderCrew() {
     var err = state.err.triggers;
-    var hidden = err && err.kind === 'hide';
+    var hidden = err && (err.kind === 'hide' || err.kind === 'approve');
     var rows = hidden ? [] : state.triggers.map(function (t) { return L.triggerCard(t, now()); });
     $('crew-list').replaceChildren.apply($('crew-list'), rows.map(crewRow));
-    $('crew-empty').hidden = rows.length > 0 || hidden;
+    $('crew-empty').hidden = rows.length > 0 || hidden || !state.loaded.triggers;
     var note = $('crew-note');
-    note.hidden = !err; note.textContent = err ? err.text : '';
+    if (err) setNote(note, err); else note.hidden = true;
     renderNotice();
   }
 
@@ -210,6 +219,7 @@
       if (code === 'blocked_by_policy') { state.tools.delete(tool); }
       if (code === 'tool_error') noteEl.textContent = "That didn't work: " + String(e.message || '').slice(0, 200);
       else if (code === 'server_unavailable' || code === 'upstream_error' || code === 'cancelled') noteEl.textContent = 'It may or may not have gone through. Check again before retrying.';
+      else if (L.errorView(code).kind === 'approve') noteEl.textContent = 'This needs your approval. Try again and choose Allow.';
       else noteEl.textContent = L.errorView(code).text;
     }).then(function () { if (btn) btn.disabled = false; });
   }
@@ -333,10 +343,7 @@
               if (p.has_more) backfill(id, p.first_id, 2, turnsBox);
             } else {
               // Refresh: keep backfilled history, replace the newest page.
-              var newest = p.data || [];
-              var firstNew = newest.length ? newest[0].created_at : null;
-              var older = state.sheet.events.filter(function (e) { return firstNew && e.created_at < firstNew; });
-              state.sheet.events = older.concat(newest);
+              state.sheet.events = L.mergeEvents(state.sheet.events, p.data || []);
               renderTurns(turnsBox);
             }
           } else {
@@ -352,11 +359,16 @@
 
   function closeSheet(silent) {
     if (state.sheet.unwatch) { try { state.sheet.unwatch(); } catch (e) { /* ignore */ } }
-    var opener = state.sheet.opener;
+    var opener = state.sheet.opener, closedId = state.sheet.id;
     state.sheet = { id: null, unwatch: null, events: [], backfilled: false, opener: null };
     $('sheet').hidden = true;
     $('sheet-backdrop').hidden = true;
-    if (!silent && opener && opener.isConnected) opener.focus();
+    if (silent) return;
+    if (opener && opener.isConnected) opener.focus();
+    else if (closedId) {
+      var again = document.querySelector('.card-title[data-id="' + (window.CSS && CSS.escape ? CSS.escape(closedId) : closedId) + '"]');
+      if (again) again.focus();
+    }
   }
 
   // ---------- Standup ----------
@@ -380,35 +392,47 @@
   }
 
   // ---------- Boot ----------
-  function sectionError(section, err) {
+  function sectionError(section, err, allow) {
     var v = L.errorView(err && err.code);
+    if (v.kind === 'approve' && allow) v = { kind: 'approve', text: v.text, allow: allow };
     state.err[section] = v;
-    if (v.kind === 'hide') { if (section === 'sessions') state.sessions = []; else state.triggers = []; }
+    if (v.kind === 'hide' || v.kind === 'approve') { if (section === 'sessions') state.sessions = []; else state.triggers = []; state.keys[section] = ''; }
     section === 'sessions' ? renderBoard() : renderCrew();
   }
 
   function startWatches() {
     if (has('list_sessions')) {
-      state.mcp.watchTool(SERVER, 'list_sessions', { mine: true, limit: 50 }, function (ev) {
-        if (ev.type === 'data') {
-          var p = L.unwrap(ev.result.payload) || {};
-          state.sessions = Array.isArray(p.data) ? p.data : [];
-          state.hasMore = !!p.has_more;
-          state.err.sessions = null;
-          markUpdated(ev.result);
-          renderBoard();
-        } else sectionError('sessions', ev.error);
+      var sIn = { mine: true, limit: 50 };
+      var onSessions = function (result) {
+        var p = L.unwrap(result.payload) || {};
+        var list = Array.isArray(p.data) ? p.data : [];
+        var key = JSON.stringify([list, !!p.has_more]);
+        var changed = key !== state.keys.sessions || state.err.sessions || !state.loaded.sessions;
+        state.sessions = list; state.hasMore = !!p.has_more; state.keys.sessions = key;
+        state.err.sessions = null; state.loaded.sessions = true;
+        markUpdated(result);
+        if (changed) renderBoard();
+      };
+      state.mcp.watchTool(SERVER, 'list_sessions', sIn, function (ev) {
+        if (ev.type === 'data') onSessions(ev.result);
+        else sectionError('sessions', ev.error, function () { state.mcp.callTool(SERVER, 'list_sessions', sIn).then(onSessions, function (e) { sectionError('sessions', e); }); });
       }, { refetchInterval: 30000 });
     } else sectionError('sessions', { code: 'blocked_by_policy' });
 
     if (has('list_triggers')) {
-      state.mcp.watchTool(SERVER, 'list_triggers', { limit: 50 }, function (ev) {
-        if (ev.type === 'data') {
-          var p = L.unwrap(ev.result.payload) || {};
-          state.triggers = Array.isArray(p.data) ? p.data : [];
-          state.err.triggers = null;
-          renderCrew();
-        } else sectionError('triggers', ev.error);
+      var tIn = { limit: 50 };
+      var onTriggers = function (result) {
+        var p = L.unwrap(result.payload) || {};
+        var list = Array.isArray(p.data) ? p.data : [];
+        var key = JSON.stringify(list);
+        var changed = key !== state.keys.triggers || state.err.triggers || !state.loaded.triggers;
+        state.triggers = list; state.keys.triggers = key;
+        state.err.triggers = null; state.loaded.triggers = true;
+        if (changed) renderCrew();
+      };
+      state.mcp.watchTool(SERVER, 'list_triggers', tIn, function (ev) {
+        if (ev.type === 'data') onTriggers(ev.result);
+        else sectionError('triggers', ev.error, function () { state.mcp.callTool(SERVER, 'list_triggers', tIn).then(onTriggers, function (e) { sectionError('triggers', e); }); });
       }, { refetchInterval: 60000 });
     } else sectionError('triggers', { code: 'blocked_by_policy' });
   }
@@ -423,11 +447,17 @@
     renderBoard(); renderCrew();
     $('refresh').addEventListener('click', function () {
       if (state.mcp) state.mcp.invalidate(SERVER).catch(function () {});
+      else location.reload();
     });
     $('show-archived').addEventListener('change', function (e) { state.showArchived = e.target.checked; renderBoard(); });
     $('sheet-backdrop').addEventListener('click', function () { closeSheet(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.sheet.id) closeSheet(); });
-    setInterval(function () { renderUpdated(); if (state.mcp) { renderBoard(); renderCrew(); } }, 30000);
+    setInterval(function () {
+      renderUpdated();
+      if (!state.mcp) return;
+      renderBoard();
+      if (!$('crew-list').querySelector('.btn.solid')) renderCrew();
+    }, 30000);
 
     var use = window.claude && window.claude.use;
     if (!use) { unavailable('not_granted'); setupStandup(null); return; }
