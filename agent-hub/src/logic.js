@@ -37,7 +37,60 @@
     return Math.floor(hr / 24) + 'd ago';
   }
 
-  var api = { unwrap: unwrap, statusOf: statusOf, relativeTime: relativeTime, STATUSES: STATUSES };
+  var WHERE = { bridge: 'Mac', anthropic_cloud: 'Cloud' };
+
+  function toCard(s) {
+    var summary = s.post_turn_summary || {};
+    return {
+      id: s.id,
+      title: s.title || 'Untitled agent',
+      status: statusOf(s),
+      summary: summary.recent_action || 'No summary yet',
+      needsAction: summary.needs_action || '',
+      updatedAt: s.updated_at || null,
+      createdAt: s.created_at || null,
+      where: WHERE[s.environment_kind] || '',
+      unread: s.unread === true,
+      url: 'https://claude.ai/code/' + encodeURIComponent(s.id),
+      helpers: []
+    };
+  }
+
+  function byUpdatedDesc(a, b) {
+    var ta = Date.parse(a.updatedAt) || 0, tb = Date.parse(b.updatedAt) || 0;
+    return tb - ta;
+  }
+
+  function deriveBoard(sessions, opts) {
+    var o = opts || {};
+    var list = (sessions || []).filter(function (s) { return s && s.id; });
+    var cards = {}, top = [];
+    list.forEach(function (s) { cards[s.id] = toCard(s); });
+    list.forEach(function (s) {
+      var parent = s.parent_session_id && cards[s.parent_session_id];
+      if (parent && s.parent_session_id !== s.id) parent.helpers.push(cards[s.id]);
+      else top.push(cards[s.id]);
+    });
+    var board = { needsYou: [], working: [], done: [], archived: [],
+      counts: { failed: 0, blocked: 0, review: 0, working: 0, done: 0, unread: 0 },
+      truncated: !!o.hasMore, empty: true };
+    top.forEach(function (c) {
+      var k = c.status.key;
+      if (k === 'archived') { if (o.showArchived) board.archived.push(c); return; }
+      board.empty = false;
+      if (c.unread) board.counts.unread++;
+      if (c.status.urgent) { board.needsYou.push(c); board.counts[k]++; }
+      else if (k === 'working') { board.working.push(c); board.counts.working++; }
+      else { board.done.push(c); board.counts.done++; }
+    });
+    board.needsYou.sort(function (a, b) { return (a.status.rank - b.status.rank) || byUpdatedDesc(a, b); });
+    board.working.sort(byUpdatedDesc);
+    board.done.sort(byUpdatedDesc);
+    board.archived.sort(byUpdatedDesc);
+    return board;
+  }
+
+  var api = { unwrap: unwrap, statusOf: statusOf, relativeTime: relativeTime, deriveBoard: deriveBoard, STATUSES: STATUSES };
   root.HubLogic = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
