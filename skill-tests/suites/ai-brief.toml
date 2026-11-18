@@ -8,7 +8,8 @@ agents = [".claude/agents/ai-brief-scout.md"]
 id = "mode-c-exercise-review"
 # The submission for the 2026-11-17 provenance.py exercise has three planted bugs:
 # percent vs. fraction (14 vs 0.1402), no K/M suffix handling, and dates split into numbers that block.
-fixtures = "ai-brief-exercise"
+# Copied from the private ai-brief repo at run time; never commit these here (this repo is public).
+source_files = ["learning.md", "profile.md", "issues/2026-11-17.html"]
 prompt = '''I did the exercise from issue No. 1 (provenance.py). Here's my code:
 
 ```python

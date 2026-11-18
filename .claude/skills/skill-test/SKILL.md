@@ -77,7 +77,7 @@ When he adds a skill (or says "write tests for <skill>"):
    - one **trigger-negative** case: an unrelated request that must not fire the skill
    - optionally one **edge** case taken from a rule in the skill (a guardrail, a "never", an output contract)
 3. Prefer checks the code can decide (`contains`, `regex`, `expect_skill`, `expect_agent`, `files_changed`, `forbid_tools`). Use the rubric only for judgment.
-4. Keep each case's budget small and fixtures minimal. Never put secrets or private data in fixtures; the profile repo is public.
+4. Keep each case's budget small and fixtures minimal. The profile repo is public: never commit secrets or private content as fixtures. For a skill in a private repo, use `source_files` to copy what the case needs from that repo at run time.
 5. Run the new cases once (Mode B). Show him the results before accepting them as baseline.
 
 ## Guardrails

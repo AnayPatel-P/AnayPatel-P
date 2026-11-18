@@ -81,6 +81,11 @@ def build_workspace(suite: dict, case: dict, sources: dict[str, Path]) -> Path:
         (shutil.copytree if (src / rel).is_dir() else shutil.copy)(src / rel, dst)
     if fx := case.get("fixtures"):
         shutil.copytree(HERE / "fixtures" / fx, ws, dirs_exist_ok=True)
+    # Files copied from the skill's own (possibly private) repo at run time, so
+    # private content never has to be committed to this public repo.
+    for rel in case.get("source_files", []):
+        (ws / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src / rel, ws / rel)
     for cmd in case.get("setup", []):
         sh(cmd, ws)
     return ws
