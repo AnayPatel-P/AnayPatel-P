@@ -1,0 +1,13 @@
+# Repos that hold skills under test. `watch` limits change detection to these paths.
+# Add your skills repo here once it exists, e.g.:
+# [skills]
+# repo = "AnayPatel-P/claude-skills"
+# watch = ["."]
+
+[profile]
+repo = "AnayPatel-P/AnayPatel-P"
+watch = [".claude", "ship-sync", "watchdog", "skill-tests/suites", "skill-tests/fixtures"]
+
+[ai-brief]
+repo = "AnayPatel-P/ai-brief"
+watch = [".claude"]

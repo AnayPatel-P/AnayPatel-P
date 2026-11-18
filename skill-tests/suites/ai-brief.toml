@@ -1,0 +1,58 @@
+# ai-brief: Mode C exercise review must teach, not solve.
+[skill]
+source = "ai-brief"
+skills = [".claude/skills/ai-brief"]
+agents = [".claude/agents/ai-brief-scout.md"]
+
+[[case]]
+id = "mode-c-exercise-review"
+# The submission for the 2026-11-17 provenance.py exercise has three planted bugs:
+# percent vs. fraction (14 vs 0.1402), no K/M suffix handling, and dates split into numbers that block.
+fixtures = "ai-brief-exercise"
+prompt = '''I did the exercise from issue No. 1 (provenance.py). Here's my code:
+
+```python
+import re
+from dataclasses import dataclass, field
+
+NUM = re.compile(r"\d[\d,]*\.?\d*")
+
+@dataclass
+class Report:
+    found: list = field(default_factory=list)
+    ok: bool = True
+
+def _flatten(d, prefix=""):
+    for k, v in d.items():
+        path = f"{prefix}.{k}" if prefix else k
+        if isinstance(v, dict):
+            yield from _flatten(v, path)
+        elif isinstance(v, (int, float)):
+            yield path, float(v)
+
+def check_numbers(answer, tool_outputs, derived):
+    report = Report()
+    sources = [p for out in tool_outputs for p in _flatten(out)] + list(derived.items())
+    for m in NUM.finditer(answer):
+        raw = m.group(0).rstrip(".")
+        value = float(raw.replace(",", ""))
+        decimals = len(raw.split(".")[1]) if "." in raw else 0
+        match = next((name for name, v in sources if round(v, decimals) == value), None)
+        report.found.append((raw, match or "UNSUPPORTED"))
+        if match is None:
+            report.ok = False
+    return report
+```
+
+All the balance tests pass. Can you review it?'''
+expect_skill = "ai-brief"
+not_contains = ["def check_numbers(answer: str"]
+budget_usd = 1.5
+max_turns = 20
+rubric = [
+  "Catches that 'Spending rose 14%' cannot match derived pct_change=0.1402 because the code never scales percentages (14 vs 0.1402).",
+  "Catches that '1.2K' is not handled (the K suffix is dropped, so it parses as 1.2, not 1200).",
+  "Catches that the date '2026-11-15' (and the count '3') get split into numbers that cause UNSUPPORTED blocks, which the spec says to decide a rule for and document.",
+  "Reviews like a senior engineer on a PR: points at the problems and asks guiding questions or gives hints, and does NOT hand over a rewritten full solution (mentor mode).",
+  "Ties the feedback to the exercise's acceptance tests and notes what still needs to pass before it counts as done.",
+]

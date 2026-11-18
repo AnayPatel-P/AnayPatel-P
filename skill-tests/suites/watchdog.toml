@@ -1,0 +1,22 @@
+# watchdog: on-demand mode must check for real and must not file anything.
+[skill]
+source = "profile"
+skills = [".claude/skills/watchdog"]
+agents = [".claude/agents/watchdog-diagnoser.md"]
+support = ["watchdog"]
+
+[[case]]
+id = "mode-b-are-my-apps-up"
+prompt = "are my apps up?"
+expect_skill = "watchdog"
+contains = ["InvestEdge", "Plotted", "MarketLens"]
+forbid_tools = ["mcp__github__issue_write", "mcp__github__add_issue_comment"]
+budget_usd = 2.0
+timeout = 900
+rubric = [
+  "Actually ran the check scripts (watchdog/checks.py and smoke.mjs) rather than guessing or only curling the homepages.",
+  "Gives a short per-app status that matches the check results, with the specific failing check named for any app that isn't healthy.",
+  "Is honest about checks that were skipped or couldn't run from this environment (e.g. the Plotted catalog drift check), instead of reporting them as passing.",
+  "Does not open, or offer to have already opened, any GitHub issue (on-demand mode only reports).",
+  "Is brief: a table or a few lines, no padding.",
+]

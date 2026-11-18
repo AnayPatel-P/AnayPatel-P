@@ -1,0 +1,40 @@
+# ship-sync: the reader agent's judgment and output contract, plus a trigger check.
+[skill]
+source = "profile"
+skills = [".claude/skills/ship-sync"]
+agents = [".claude/agents/ship-sync-reader.md"]
+support = ["ship-sync"]
+
+[[case]]
+id = "reader-investedge-lineup"
+# Real change: InvestEdge's "Lineup" redesign (8f48f2f) vs. copy written for the Recording Drum.
+fixtures = "ship-sync-reader-investedge"
+setup = [
+  "git clone -q --depth 5 https://github.com/AnayPatel-P/investedge repo",
+  "git -C repo checkout -q 8f48f2fd4d9ee275d1d020c569915f1087ff8f4e",
+]
+prompt = """Use the ship-sync-reader agent to check InvestEdge. Its project entry is {"name": "InvestEdge", "repo": "AnayPatel-P/investedge", "live_url": "https://anaypatel-p.github.io/investedge/", "site_article_id": "p-investedge", "readme_row": "InvestEdge"}. Its detection object, current README row and current site article are in inputs/InvestEdge.md. The voice guide is ship-sync/voice.md and the repo clone is ./repo. Reply with the agent's report exactly as it returns it."""
+expect_agent = "ship-sync-reader"
+contains = ["verdict: stale", "### Claims check", "### Evidence", "### Proposed copy", "8f48f2f"]
+not_contains = ["colour", "revolutionary", "cutting-edge", "seamless", "game-changer"]
+regex = ['^readme_row: \|', '^status_line: 2026-11-1\d']
+budget_usd = 2.5
+rubric = [
+  "Identifies the Lineup redesign (model player cards, MVP star for the naive guess, flip-card season) as the visible change.",
+  "Every claim in the 'Claims check' has a concrete citation (commit SHA or file:line), and outdated claims really are outdated.",
+  "Proposed copy keeps every claim that is still true and changes only what the redesign made untrue or incomplete.",
+  "Proposed copy contains no number that is absent from its Evidence list.",
+  "Proposed copy matches the voice guide: plain, specific, American spelling, HTML entities like &amp; and typographic quotes.",
+  "Flags that the site screenshot and alt text show the old design instead of silently rewriting the alt text.",
+]
+
+[[case]]
+id = "does-not-trigger-on-unrelated-edit"
+fixtures = "no-trigger"
+prompt = "Fix the spelling mistakes in notes.md."
+expect_skill = "none"
+files_changed = ["notes.md"]
+check_file = "notes.md"
+contains = ["agreed", "redesign", "Friday", "Receive"]
+budget_usd = 0.5
+max_turns = 6
