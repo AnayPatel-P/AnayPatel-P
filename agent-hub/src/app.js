@@ -185,7 +185,7 @@
   function renderCrew() {
     var err = state.err.triggers;
     var hidden = err && (err.kind === 'hide' || err.kind === 'approve');
-    var rows = hidden ? [] : state.triggers.map(function (t) { return L.triggerCard(t, now()); });
+    var rows = hidden ? [] : state.triggers.filter(L.isAgentTrigger).map(function (t) { return L.triggerCard(t, now()); });
     $('crew-list').replaceChildren.apply($('crew-list'), rows.map(crewRow));
     $('crew-empty').hidden = rows.length > 0 || hidden || !state.loaded.triggers;
     var note = $('crew-note');

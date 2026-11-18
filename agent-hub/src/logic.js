@@ -106,7 +106,11 @@
     var f = body.split(/\s+/);
     if (f.length !== 5) return expr;
     var isNum = function (x) { return /^\d+$/.test(x); };
-    if (f[0] === '0' && f[1] === '*' && f[2] === '*' && f[3] === '*' && f[4] === '*') return 'Hourly';
+    if (isNum(f[0]) && f[2] === '*' && f[3] === '*' && f[4] === '*') {
+      if (f[1] === '*') return 'Hourly';
+      var every = /^\*\/(\d+)$/.exec(f[1]);
+      if (every) return +every[1] === 1 ? 'Hourly' : 'Every ' + (+every[1]) + ' hours';
+    }
     if (!isNum(f[0]) || !isNum(f[1]) || f[2] !== '*' || f[3] !== '*') return expr;
     var time = pad2(+f[1]) + ':' + pad2(+f[0]) + (zone === 'UTC' ? ' UTC' : ' (' + zone + ')');
     if (f[4] === '*') return 'Daily at ' + time;
@@ -128,8 +132,14 @@
       last = { label: r.label, ok: r.ok, when: relativeTime(lr.fired_at, nowMs),
         sessionUrl: lr.session_id ? 'https://claude.ai/code/' + encodeURIComponent(lr.session_id) : null };
     }
-    return { id: t.id, name: t.name || 'Untitled task', schedule: humanizeCron(t.cron_expression),
-      enabled: t.enabled !== false, nextRun: t.next_run_at || null, last: last };
+    var oneTime = !t.cron_expression && t.run_once_at;
+    return { id: t.id, name: t.name || 'Untitled task', schedule: oneTime ? 'One time' : humanizeCron(t.cron_expression),
+      enabled: t.enabled !== false, nextRun: t.next_run_at || t.run_once_at || null, last: last };
+  }
+
+  // One-off reminders a Claude session schedules for itself aren't agents.
+  function isAgentTrigger(t) {
+    return !t || t.created_kind !== 'ROUTINE_CREATED_KIND_REMINDER';
   }
 
   function bodyOf(ev, kind) {
@@ -213,7 +223,7 @@
 
   var api = { unwrap: unwrap, statusOf: statusOf, relativeTime: relativeTime, deriveBoard: deriveBoard,
     humanizeCron: humanizeCron, triggerCard: triggerCard, extractTurns: extractTurns,
-    standupMessages: standupMessages, errorView: errorView, mergeEvents: mergeEvents, STATUSES: STATUSES };
+    standupMessages: standupMessages, errorView: errorView, mergeEvents: mergeEvents, isAgentTrigger: isAgentTrigger, STATUSES: STATUSES };
   root.HubLogic = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

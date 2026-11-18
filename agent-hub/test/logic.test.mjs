@@ -229,3 +229,24 @@ test('approval_required offers an allow step', () => {
   assert.equal(errorView('approval_required').kind, 'approve');
   assert.equal(errorView('consent_required').kind, 'approve');
 });
+
+// ---- Real-data follow-ups ----
+const { isAgentTrigger } = L;
+
+test('humanizeCron handles every-N-hours and minute-anchored hourly', () => {
+  assert.equal(humanizeCron('16 */6 * * *'), 'Every 6 hours');
+  assert.equal(humanizeCron('17 * * * *'), 'Hourly');
+  assert.equal(humanizeCron('0 */1 * * *'), 'Hourly');
+});
+
+test('one-shot tasks show as one-time', () => {
+  const t = triggerCard({ id: 't', name: 'Once', cron_expression: '', run_once_at: '2026-11-19T02:04:00Z', enabled: true }, Date.parse('2026-11-18T12:00:00Z'));
+  assert.equal(t.schedule, 'One time');
+  assert.equal(t.nextRun, '2026-11-19T02:04:00Z');
+});
+
+test('reminders are not agents', () => {
+  assert.equal(isAgentTrigger({ created_kind: 'ROUTINE_CREATED_KIND_REMINDER' }), false);
+  assert.equal(isAgentTrigger({ created_kind: 'ROUTINE_CREATED_KIND_ROUTINE' }), true);
+  assert.equal(isAgentTrigger({}), true);
+});
