@@ -4,6 +4,8 @@ I build ML systems for finance, and the AI toolkit I use to ship them.
 
 Data Science Associate at [Wio Bank](https://www.wio.io/) and MS Business Analytics & AI candidate at UT Austin. I work on credit scoring, transaction intelligence, and LLM assistants whose every number traces back to real data. Off the clock, I design Claude skills that take an idea to a shipped product: plan, design, build, verify.
 
+I'm recruiting for ML engineering, data science and AI roles.
+
 **[Portfolio](https://anaypatel-p.github.io)** · [Resume](https://anaypatel-p.github.io/resume.pdf) · [LinkedIn](https://www.linkedin.com/in/anay-patel26/) · [anay.patel1118@gmail.com](mailto:anay.patel1118@gmail.com)
 
 ## Selected work
@@ -11,12 +13,12 @@ Data Science Associate at [Wio Bank](https://www.wio.io/) and MS Business Analyt
 | Project | What it is | Status |
 |---|---|---|
 | **[InvestEdge](https://github.com/AnayPatel-P/investedge)** | Forecasting, honestly. Runs ARIMA, ETS, Prophet and GARCH on every S&P 500 stock, then replays a year of old forecasts against what really happened. Drag the chart like a barograph drum back to a past date and watch reality ink itself through the forecasts. Nightly pipeline → DuckDB → static React app, plus an optional Claude tutor that looks numbers up instead of guessing. [Live demo](https://anaypatel-p.github.io/investedge/) | **Live** |
-| **[Plotted](https://github.com/AnayPatel-P/plotted)** | Plan your degree semester by semester against your school's real catalog. Python scrapers → rule trees → a TypeScript requirement and prerequisite engine in the browser; Next.js + Supabase. Lighthouse 100, 0 axe violations. [Live app](https://plotted-cyan.vercel.app) | **Live** |
-| **[MarketLens](https://github.com/AnayPatel-P/MarketLens)** | A stock dashboard that writes its own headline: live watchlist, technical charts and real portfolio P&L against the same money in the S&P 500. FastAPI indicators + Decimal P&L, one Alpaca stream fanned out over WebSockets, Supabase with row-level security, Fly.io. [Live app](https://marketlens-live.fly.dev) | **Live** |
+| **[Plotted](https://github.com/AnayPatel-P/plotted)** | Your degree as a route map: every semester a station, every requirement a line, checked live against your school's real catalog. Starting with UT Austin (Math, CS) and Texas A&M (Data Engineering). Python scrapers → rule trees → a TypeScript requirement and prerequisite engine in the browser that flags critical paths; Next.js + Supabase. v2 adds real start terms, completed semesters and transfer credit. Lighthouse 100, 0 axe violations. [Live app](https://plotted-cyan.vercel.app) | **Live** |
+| **[MarketLens](https://github.com/AnayPatel-P/MarketLens)** | A stock dashboard that writes its own headline: live watchlist, technical charts and real portfolio P&L against the same money in the S&P 500. Scrub the chart and the headline rewrites itself; four switchable "lenses", all WCAG AA; one-click demo, no sign-up. FastAPI indicators + Decimal P&L, one Alpaca stream fanned out over WebSockets, Supabase with row-level security, Fly.io. [Live app](https://marketlens-live.fly.dev) | **Live** |
 
 ## How I build with AI
 
-I write Claude skills: reusable workflows with phases, gates, output contracts and guardrails. InvestEdge, Plotted, MarketLens and my portfolio site were planned with **project-manager** and designed with **original-ui**.
+I write Claude skills: reusable workflows with phases, gates, output contracts and guardrails. InvestEdge, Plotted and MarketLens were planned with **project-manager** and designed with **original-ui**; my [portfolio](https://anaypatel-p.github.io) was designed with original-ui and impeccable.
 
 ```mermaid
 flowchart LR
@@ -42,7 +44,7 @@ flowchart LR
 
 - **Wio Bank**, Data Science Associate (2024–now) and ML Intern: financial-health scoring, an 8-tier transaction-categorization cascade, an AI finance assistant with a number-fidelity layer, XGBoost credit scoring
 - **The Estée Lauder Companies**, CEO Presidential Associate Intern, Data Science: NLP sentiment + sales forecasting, price-elasticity modeling
-- **UT Austin**: MS Business Analytics & AI (May 2028) · BS Mathematics, Statistics & Data Science minor (May 2026)
+- **UT Austin**: MS Business Analytics & AI (May 2028) · BS Mathematics, Statistics & Data Science minor (May 2026, GPA 3.93)
 
 ## Toolbox
 
