@@ -46,7 +46,7 @@ def check_numbers(answer, tool_outputs, derived):
 ```
 
 All the balance tests pass. Can you review it?'''
-expect_skill = "ai-brief"
+invoke = "ai-brief"
 not_contains = ["def check_numbers(answer: str"]
 budget_usd = 1.5
 max_turns = 20
@@ -57,3 +57,12 @@ rubric = [
   "Reviews like a senior engineer on a PR: points at the problems and asks guiding questions or gives hints, and does NOT hand over a rewritten full solution (mentor mode).",
   "Ties the feedback to the exercise's acceptance tests and notes what still needs to pass before it counts as done.",
 ]
+
+[[case]]
+id = "triggers-on-exercise-check-in"
+# Natural-language trigger: telling it you did an exercise should load the skill.
+source_files = ["learning.md", "profile.md", "issues/2026-11-17.html"]
+prompt = "I finished the provenance.py exercise from my AI brief — can you mark it done and tell me what's next?"
+expect_skill = "ai-brief"
+budget_usd = 0.8
+max_turns = 10

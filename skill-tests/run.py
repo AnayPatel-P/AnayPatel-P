@@ -92,7 +92,10 @@ def build_workspace(suite: dict, case: dict, sources: dict[str, Path]) -> Path:
 
 
 def run_claude(ws: Path, case: dict) -> dict:
-    cmd = ["claude", "-p", case["prompt"], "--output-format", "stream-json", "--verbose",
+    # `invoke` calls the skill explicitly (/name …) so content tests don't depend on
+    # nondeterministic triggering; trigger behavior gets its own natural-language cases.
+    prompt = f"/{case['invoke']} {case['prompt']}" if case.get("invoke") else case["prompt"]
+    cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
            "--setting-sources", "project", "--strict-mcp-config",
            "--allowedTools", case.get("tools", DEFAULT_TOOLS),
            "--max-turns", str(case.get("max_turns", 30)),
@@ -140,6 +143,8 @@ def deterministic(case: dict, run: dict, ws: Path, changed: list[str]) -> list[d
     def add(name, ok, detail=""):
         out.append({"check": name, "ok": bool(ok), "detail": detail})
 
+    # Cases with `invoke` call the skill themselves (/name), which leaves no tool event to detect,
+    # so only natural-language cases check triggering.
     want = case.get("expect_skill")
     if want == "none":
         add("skill not triggered", not run["skills"], f"fired: {run['skills']}")
@@ -158,6 +163,13 @@ def deterministic(case: dict, run: dict, ws: Path, changed: list[str]) -> list[d
         add(f"contains {s!r}", s.lower() in low)
     for s in case.get("not_contains", []):
         add(f"does not contain {s!r}", s.lower() not in low)
+    # Section-scoped bans, e.g. spelling rules that apply to proposed copy but not to verbatim quotes.
+    for heading, banned in case.get("not_contains_in_section", {}).items():
+        m = re.search(rf"^{re.escape(heading)}.*?(?=^#{{1,3}} |\Z)", target, re.M | re.S)
+        sec = m.group(0).lower() if m else ""
+        add(f"section {heading!r} found", m)
+        for s in banned:
+            add(f"{heading!r} does not contain {s!r}", s.lower() not in sec)
     for r in case.get("regex", []):
         add(f"matches /{r}/", re.search(r, target, re.M | re.I))
     for f in case.get("files_changed", []):
@@ -198,10 +210,11 @@ def compare(result: dict, base: dict | None, min_score: int) -> list[str]:
     problems += [f"rubric {s['score']}/5 < {min_score}: {s['item']} ({s['reason']})"
                  for s in result["rubric"] if s["score"] < min_score]
     if base:
-        before = {s["item"]: s["score"] for s in base.get("rubric", [])}
-        for s in result["rubric"]:
-            if s["item"] in before and before[s["item"]] - s["score"] >= 2:
-                problems.append(f"regressed {before[s['item']]}→{s['score']}: {s['item']} ({s['reason']})")
+        # Match by position: the judge paraphrases item text, the rubric order is fixed.
+        for i, (old, new) in enumerate(zip(base.get("rubric", []), result["rubric"])):
+            if old["score"] - new["score"] >= 2:
+                problems.append(f"regressed {old['score']}→{new['score']} on rubric item {i + 1}: "
+                                f"{new['item']} ({new['reason']})")
     return problems
 
 

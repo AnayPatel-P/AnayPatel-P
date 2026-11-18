@@ -16,7 +16,8 @@ setup = [
 prompt = """Use the ship-sync-reader agent to check InvestEdge. Its project entry is {"name": "InvestEdge", "repo": "AnayPatel-P/investedge", "live_url": "https://anaypatel-p.github.io/investedge/", "site_article_id": "p-investedge", "readme_row": "InvestEdge"}. Its detection object, current README row and current site article are in inputs/InvestEdge.md. The voice guide is ship-sync/voice.md and the repo clone is ./repo. Reply with the agent's report exactly as it returns it."""
 expect_agent = "ship-sync-reader"
 contains = ["verdict: stale", "### Claims check", "### Evidence", "### Proposed copy", "8f48f2f"]
-not_contains = ["colour", "revolutionary", "cutting-edge", "seamless", "game-changer"]
+# Evidence quotes commit messages verbatim (British "colour" is fine there); proposed copy must follow voice.md.
+not_contains_in_section = { "### Proposed copy" = ["colour", "revolutionary", "cutting-edge", "seamless", "game-changer"] }
 regex = ['^readme_row: \|', '^status_line: 2026-11-1\d']
 budget_usd = 2.5
 rubric = [
