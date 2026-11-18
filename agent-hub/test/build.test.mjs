@@ -13,7 +13,7 @@ test('build inlines logic and app into a contract-shaped page', () => {
   assert.match(html, /claude:viewport-fit-sides/);
   assert.match(html, /HubLogic/);
   assert.doesNotMatch(html, /<!--LOGIC-->|<!--APP-->/);
-  assert.doesNotMatch(html, /<html|<head|<body/i);
+  assert.doesNotMatch(html, /<html[\s>]|<head[\s>]|<body[\s>]/i);
   assert.match(html, /@media \(prefers-color-scheme: dark\)/);
   assert.match(html, /\[data-theme="dark"\]/);
 });
