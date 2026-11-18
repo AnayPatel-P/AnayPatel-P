@@ -148,7 +148,7 @@ test('triggerCard statuses', () => {
   assert.equal(ok.schedule, 'Daily at 03:00 UTC');
   assert.equal(ok.enabled, true);
   assert.equal(ok.nextRun, '2026-11-19T03:01:00Z');
-  assert.deepEqual(ok.last, { label: 'Succeeded', ok: true, when: '8h ago', sessionUrl: 'https://claude.ai/code/cse_9' });
+  assert.deepEqual(ok.last, { label: 'Succeeded', ok: true, when: '8h ago', sessionUrl: 'https://claude.ai/code/cse_9', sessionId: 'cse_9' });
   const bad = triggerCard({ ...base, last_run: { status: 'ROUTINE_RUN_STATUS_FAILED', fired_at: '2026-11-18T03:01:00Z' } }, now);
   assert.equal(bad.last.label, 'Failed'); assert.equal(bad.last.ok, false); assert.equal(bad.last.sessionUrl, null);
   const run = triggerCard({ ...base, last_run: { status: 'ROUTINE_RUN_STATUS_RUNNING', fired_at: '2026-11-18T11:59:00Z' } }, now);
@@ -270,4 +270,49 @@ test('describeTrigger falls back to the first sentence of the instructions', () 
 
 test('triggerCard carries the description', () => {
   assert.match(triggerCard({ id: 'trig_01HURaF6FpnLb7h6575NNAS6', cron_expression: '16 */6 * * *' }, 0).about, /issues/);
+});
+
+// ---- Run outcomes ----
+const { runOutcome, crewAlerts } = L;
+const resultEv = (text, isError = false) => ({ created_at: '2026-11-18T01:29:16Z', result: { internal_anthropic_catchall: { is_error: isError, result: text } } });
+
+test('runOutcome flags runs that report a problem', () => {
+  const bad = runOutcome([resultEv("All three apps passed every check, but this run **couldn't reach GitHub**, so it could not file issues.\n\nMore detail.")]);
+  assert.equal(bad.flagged, true);
+  assert.equal(bad.summary, "All three apps passed every check, but this run couldn't reach GitHub, so it could not file issues.");
+  assert.equal(runOutcome([resultEv('I still can\'t push `ship-sync/updates`; the retries failed with the same 403.')]).flagged, true);
+});
+
+test('runOutcome passes healthy runs', () => {
+  const ok = runOutcome([{ user: {} }, resultEv('All three apps healthy.')]);
+  assert.deepEqual(ok, { summary: 'All three apps healthy.', flagged: false });
+  assert.equal(runOutcome([resultEv('nothing shipped')]).flagged, false);
+});
+
+test('runOutcome treats errors as flagged and missing results as unknown', () => {
+  assert.equal(runOutcome([resultEv('', true)]).flagged, true);
+  assert.equal(runOutcome([resultEv('', true)]).summary, 'The run ended with an error.');
+  assert.equal(runOutcome([{ assistant: {} }]), null);
+  assert.ok(runOutcome([resultEv('x'.repeat(500))]).summary.length <= 201);
+});
+
+test('crewAlerts lists failed or flagged runs', () => {
+  const card = (id, ok, sid) => ({ id, name: 'Agent ' + id, last: { ok, label: ok === false ? 'Failed' : 'Succeeded', sessionUrl: sid ? 'https://claude.ai/code/' + sid : null, sessionId: sid } });
+  const runs = { s2: { summary: "Couldn't reach GitHub.", flagged: true }, s3: { summary: 'All healthy.', flagged: false } };
+  const alerts = crewAlerts([card('a', false, 's1'), card('b', true, 's2'), card('c', true, 's3'), card('d', null, null)], runs);
+  assert.deepEqual(alerts.map(a => a.id), ['a', 'b']);
+  assert.equal(alerts[0].text, 'Last run failed');
+  assert.equal(alerts[1].text, "Couldn't reach GitHub.");
+  assert.equal(alerts[1].url, 'https://claude.ai/code/s2');
+});
+
+test('triggerCard exposes the run session id', () => {
+  const t = triggerCard({ id: 't', cron_expression: '0 3 * * *', last_run: { status: 'ROUTINE_RUN_STATUS_SUCCEEDED', fired_at: '2026-11-18T01:00:00Z', session_id: 'cse_9' } }, Date.parse('2026-11-18T02:00:00Z'));
+  assert.equal(t.last.sessionId, 'cse_9');
+});
+
+test('runOutcome does not flag a healthy report that mentions skipping work', () => {
+  const o = runOutcome([resultEv('- **Headline:** AI Brief No. 1: "Agents reach for the money". Today\'s issue file was already in the repo, so I didn\'t rewrite it or run new research.\n- **Email:** Sent.')]);
+  assert.equal(o.flagged, false);
+  assert.equal(o.summary, 'Headline: AI Brief No. 1: "Agents reach for the money".');
 });

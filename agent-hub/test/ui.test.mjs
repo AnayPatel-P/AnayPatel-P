@@ -20,7 +20,7 @@ function fakeConnector() {
   const iso = m => new Date(Date.now() - m * 60000).toISOString();
   const data = {
     list_sessions: { ccr: { data: [{ id: 's1', title: 'Example agent', session_status: 'SESSION_STATUS_IDLE', status_bucket: 'SESSION_STATUS_BUCKET_WORKING', updated_at: iso(2), post_turn_summary: { recent_action: 'Example work' } }], has_more: false } },
-    list_triggers: { data: [{ id: 't1', name: 'Example task', cron_expression: '0 3 * * *', enabled: true, next_run_at: iso(-60) }] },
+    list_triggers: { data: [{ id: 't1', name: 'Example task', cron_expression: '0 3 * * *', enabled: true, next_run_at: iso(-60), last_run: { status: 'ROUTINE_RUN_STATUS_SUCCEEDED', fired_at: iso(30), session_id: 'cse_1' } }] },
     list_events: { ccr: { data: [], has_more: false } },
   };
   const handlers = {};
@@ -28,7 +28,9 @@ function fakeConnector() {
   const mcp = {
     listTools: async () => ({ servers: [{ server: 'Claude Code Remote', authStatus: 'connected', tools: Object.keys(data).concat(['update_trigger', 'fire_trigger']).map(name => ({ name })) }] }),
     watchTool: (s, t, i, fn) => { handlers[t] = fn; setTimeout(() => window.__push(t), 5); return () => {}; },
-    callTool: async () => ({ payload: {} }), invalidate: async () => {},
+    callTool: async (srv, tool, input) => (tool === 'list_events' && input.kinds && input.kinds[0] === 'result'
+      ? { payload: { ccr: { data: [{ result: { internal_anthropic_catchall: { is_error: false, result: "Checks passed, but this run couldn't reach GitHub.\n\nDetails." } } }], has_more: false } } }
+      : { payload: {} }), invalidate: async () => {},
   };
   window.claude = { use: async n => (n === 'mcp' ? mcp : null) };
 }
@@ -72,5 +74,16 @@ test('an unchanged refresh keeps an open Pause confirmation', async () => {
     await page.evaluate(() => window.__push('list_triggers'));
     await page.waitForTimeout(50);
     assert.equal(await page.locator('#crew-list button:has-text("Confirm")').count(), 1);
+  } finally { await browser.close(); }
+});
+
+test('a run that reports a problem shows in Needs you and on its row', async () => {
+  const { browser, page } = await open(true);
+  try {
+    await page.waitForTimeout(200);
+    const needs = await page.textContent('#needs-list');
+    assert.match(needs, /Scheduled task · Checks passed, but this run couldn't reach GitHub\./);
+    assert.match(await page.textContent('#crew-list'), /Check run/);
+    assert.equal(await page.textContent('#needs-count'), '1');
   } finally { await browser.close(); }
 });

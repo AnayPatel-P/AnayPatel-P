@@ -126,11 +126,12 @@
   function triggerCard(t, nowMs) {
     var lr = t.last_run;
     var last;
-    if (!lr || !lr.status) last = { label: 'Never run', ok: null, when: '', sessionUrl: null };
+    if (!lr || !lr.status) last = { label: 'Never run', ok: null, when: '', sessionUrl: null, sessionId: null };
     else {
       var r = RUN[lr.status] || { label: 'Running', ok: null };
       last = { label: r.label, ok: r.ok, when: relativeTime(lr.fired_at, nowMs),
-        sessionUrl: lr.session_id ? 'https://claude.ai/code/' + encodeURIComponent(lr.session_id) : null };
+        sessionUrl: lr.session_id ? 'https://claude.ai/code/' + encodeURIComponent(lr.session_id) : null,
+        sessionId: lr.session_id || null };
     }
     var oneTime = !t.cron_expression && t.run_once_at;
     return { id: t.id, name: t.name || 'Untitled task', about: describeTrigger(t), schedule: oneTime ? 'One time' : humanizeCron(t.cron_expression),
@@ -207,6 +208,32 @@
     return (older || []).filter(function (e) { return !seen[eventKey(e)]; }).concat(fresh);
   }
 
+  // Words in a run's final report that mean it couldn't do its job.
+  var PROBLEM = /\b(can['’]?t|cannot|couldn['’]?t|could not|unable|failed|failing|refused|blocked|denied|403|401|not authorized)\b/i;
+
+  function runOutcome(events) {
+    var res = null;
+    (events || []).forEach(function (ev) { if (ev && ev.result) res = bodyOf(ev, 'result'); });
+    if (!res) return null;
+    var text = String(res.result || '').replace(/\*\*|`/g, '').trim();
+    var first = text.split(/\n/)[0].replace(/^\s*[-*•]\s+/, '');
+    var m = /^(.*?[.!?])(?=\s+[A-Z“"]|\s*$)/.exec(first);
+    var summary = (m ? m[1] : first).trim();
+    if (summary.length > 200) summary = summary.slice(0, 200) + '…';
+    if (!summary && res.is_error) summary = 'The run ended with an error.';
+    return { summary: summary, flagged: !!res.is_error || PROBLEM.test(text.split(/\n\n/)[0]) };
+  }
+
+  function crewAlerts(cards, runs) {
+    var out = [];
+    (cards || []).forEach(function (t) {
+      var run = t.last.sessionId && runs ? runs[t.last.sessionId] : null;
+      if (t.last.ok === false) out.push({ id: t.id, name: t.name, text: 'Last run failed', url: t.last.sessionUrl });
+      else if (run && run.flagged) out.push({ id: t.id, name: t.name, text: run.summary, url: t.last.sessionUrl });
+    });
+    return out;
+  }
+
   function standupMessages(board, nowMs) {
     var dayAgo = nowMs - 24 * 3600 * 1000;
     var recent = function (c) { return (Date.parse(c.updatedAt) || 0) >= dayAgo; };
@@ -241,7 +268,7 @@
 
   var api = { unwrap: unwrap, statusOf: statusOf, relativeTime: relativeTime, deriveBoard: deriveBoard,
     humanizeCron: humanizeCron, triggerCard: triggerCard, extractTurns: extractTurns,
-    standupMessages: standupMessages, errorView: errorView, mergeEvents: mergeEvents, isAgentTrigger: isAgentTrigger, describeTrigger: describeTrigger, STATUSES: STATUSES };
+    standupMessages: standupMessages, errorView: errorView, mergeEvents: mergeEvents, isAgentTrigger: isAgentTrigger, describeTrigger: describeTrigger, runOutcome: runOutcome, crewAlerts: crewAlerts, STATUSES: STATUSES };
   root.HubLogic = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

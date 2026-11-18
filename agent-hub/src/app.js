@@ -36,6 +36,7 @@
     showArchived: false, filter: null, updatedAt: null,
     err: { sessions: null, triggers: null }, board: null,
     loaded: { sessions: false, triggers: false }, keys: { sessions: '', triggers: '' },
+    runs: {}, runFetching: {},
     sheet: { id: null, unwatch: null, events: [], backfilled: false, opener: null }
   };
   function has(tool) { return state.tools.has(tool); }
@@ -101,6 +102,47 @@
         h('a', { href: c.url, target: '_blank', rel: 'noopener', text: 'Open session ↗' })));
   }
 
+  function crewCards() {
+    var err = state.err.triggers;
+    if (err && (err.kind === 'hide' || err.kind === 'approve')) return [];
+    return state.triggers.filter(L.isAgentTrigger).map(function (t) { return L.triggerCard(t, now()); });
+  }
+
+  function alertItem(a) {
+    var kids = [
+      h('span', { class: 'stripe', 'aria-hidden': 'true' }),
+      h('span', { class: 'inbox-main' },
+        h('span', { class: 'inbox-title', text: a.name }),
+        h('span', { class: 'inbox-sub', text: 'Scheduled task · ' + a.text })),
+      h('span', { class: 'when', text: a.url ? 'View run ↗' : '' })];
+    return a.url
+      ? h('a', { class: 'inbox-item s-failed', href: a.url, target: '_blank', rel: 'noopener', style: 'text-decoration:none' }, kids)
+      : h('div', { class: 'inbox-item s-failed' }, kids);
+  }
+
+  function renderNeeds(sessionItems, sessionsHidden) {
+    var items = (sessionItems || (state.board ? state.board.needsYou : [])).map(inboxItem)
+      .concat(L.crewAlerts(crewCards(), state.runs).map(alertItem));
+    $('needs-list').replaceChildren.apply($('needs-list'), items);
+    $('needs-count').textContent = String(items.length);
+    $('needs-empty').hidden = items.length > 0 || !!sessionsHidden || !state.loaded.sessions;
+  }
+
+  function fetchRun(sid) {
+    if (!sid || state.runs[sid] || state.runFetching[sid] || !has('list_events')) return;
+    state.runFetching[sid] = true;
+    var store = function (outcome) { state.runs[sid] = outcome || { summary: '', flagged: false }; renderCrew(); };
+    state.mcp.callTool(SERVER, 'list_events', { session_id: sid, kinds: ['result'], limit: 5 })
+      .then(function (r) {
+        var p = L.unwrap(r.payload) || {};
+        var outcome = L.runOutcome(p.data);
+        if (outcome || !p.has_more) return store(outcome);
+        return state.mcp.callTool(SERVER, 'list_events', { session_id: sid, kinds: ['result'], limit: 20, before_id: p.first_id })
+          .then(function (r2) { store(L.runOutcome((L.unwrap(r2.payload) || {}).data)); });
+      })
+      .catch(function () { store(null); });
+  }
+
   function renderBoard() {
     var b = L.deriveBoard(state.sessions, { showArchived: state.showArchived, hasMore: state.hasMore });
     state.board = b;
@@ -108,9 +150,7 @@
     var hidden = err && (err.kind === 'hide' || err.kind === 'approve');
     if (hidden) b = L.deriveBoard([], {});
 
-    $('needs-list').replaceChildren.apply($('needs-list'), b.needsYou.map(inboxItem));
-    $('needs-count').textContent = String(b.needsYou.length);
-    $('needs-empty').hidden = b.needsYou.length > 0 || hidden || !state.loaded.sessions;
+    renderNeeds(hidden ? [] : b.needsYou, hidden);
 
     var counts = b.counts;
     $('summary').replaceChildren.apply($('summary'), CHIPS.filter(function (ch) { return counts[ch.key] > 0 || state.filter === ch.key; }).map(function (ch) {
@@ -171,6 +211,10 @@
     var last = h('dd', null, h('span', { class: t.last.ok === true ? 'ok' : t.last.ok === false ? 'bad' : '', text: t.last.label }),
       t.last.when ? ' · ' + t.last.when : '',
       t.last.sessionUrl ? [' · ', h('a', { href: t.last.sessionUrl, target: '_blank', rel: 'noopener', text: 'View run ↗' })] : null);
+    var run = t.last.sessionId ? state.runs[t.last.sessionId] : null;
+    var report = run && run.summary ? h('p', { class: 'crew-report' + (run.flagged ? ' flagged' : '') },
+      run.flagged ? h('span', { class: 'pill s-blocked', text: 'Check run' }) : null,
+      h('span', { text: run.summary })) : null;
     return h('article', { class: 'crew-row' },
       h('div', { class: 'crew-head' },
         h('span', { class: 'crew-name', text: t.name }),
@@ -180,14 +224,17 @@
         h('div', null, h('dt', { text: 'Schedule' }), h('dd', { text: localSchedule(t.schedule) })),
         h('div', null, h('dt', { text: 'Next run' }), h('dd', { text: t.enabled ? localDateTime(t.nextRun) : 'Paused' })),
         h('div', null, h('dt', { text: 'Last run' }), last)),
+      report,
       actions);
   }
 
   function renderCrew() {
     var err = state.err.triggers;
     var hidden = err && (err.kind === 'hide' || err.kind === 'approve');
-    var rows = hidden ? [] : state.triggers.filter(L.isAgentTrigger).map(function (t) { return L.triggerCard(t, now()); });
+    var rows = crewCards();
+    rows.forEach(function (t) { fetchRun(t.last.sessionId); });
     $('crew-list').replaceChildren.apply($('crew-list'), rows.map(crewRow));
+    renderNeeds(null, state.err.sessions && (state.err.sessions.kind === 'hide' || state.err.sessions.kind === 'approve'));
     $('crew-empty').hidden = rows.length > 0 || hidden || !state.loaded.triggers;
     var note = $('crew-note');
     if (err) setNote(note, err); else note.hidden = true;
