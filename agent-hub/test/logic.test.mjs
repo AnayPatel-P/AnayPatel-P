@@ -250,3 +250,23 @@ test('reminders are not agents', () => {
   assert.equal(isAgentTrigger({ created_kind: 'ROUTINE_CREATED_KIND_ROUTINE' }), true);
   assert.equal(isAgentTrigger({}), true);
 });
+
+// ---- Agent descriptions ----
+const { describeTrigger } = L;
+
+test('describeTrigger uses written descriptions for known agents', () => {
+  assert.match(describeTrigger({ id: 'trig_012V1kNzrYBaotooJtEu75fA' }), /pull requests/);
+  assert.match(describeTrigger({ id: 'trig_01HURaF6FpnLb7h6575NNAS6' }), /issues/);
+  assert.match(describeTrigger({ id: 'trig_01JNt6adt4hzK39JGjeh9r6J' }), /newsletter/);
+});
+
+test('describeTrigger falls back to the first sentence of the instructions', () => {
+  assert.equal(describeTrigger({ id: 'x', derived_state: { prompt: 'Run the backup check for my apps (Mode A).\n\n1. Do things.' } }), 'Run the backup check for my apps.');
+  assert.equal(describeTrigger({ id: 'x', derived_state: { prompt: 'Summarize inbox' } }), 'Summarize inbox');
+  assert.equal(describeTrigger({ id: 'x' }), '');
+  assert.ok(describeTrigger({ id: 'x', derived_state: { prompt: 'a'.repeat(400) } }).length <= 161);
+});
+
+test('triggerCard carries the description', () => {
+  assert.match(triggerCard({ id: 'trig_01HURaF6FpnLb7h6575NNAS6', cron_expression: '16 */6 * * *' }, 0).about, /issues/);
+});

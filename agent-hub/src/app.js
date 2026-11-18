@@ -175,6 +175,7 @@
       h('div', { class: 'crew-head' },
         h('span', { class: 'crew-name', text: t.name }),
         h('span', { class: 'pill ' + (t.enabled ? 's-working' : 's-done'), text: t.enabled ? 'Active' : 'Paused' })),
+      t.about ? h('p', { class: 'crew-about', text: t.about }) : null,
       h('dl', { class: 'facts' },
         h('div', null, h('dt', { text: 'Schedule' }), h('dd', { text: localSchedule(t.schedule) })),
         h('div', null, h('dt', { text: 'Next run' }), h('dd', { text: t.enabled ? localDateTime(t.nextRun) : 'Paused' })),

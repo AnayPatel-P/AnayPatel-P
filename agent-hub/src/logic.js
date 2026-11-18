@@ -133,8 +133,25 @@
         sessionUrl: lr.session_id ? 'https://claude.ai/code/' + encodeURIComponent(lr.session_id) : null };
     }
     var oneTime = !t.cron_expression && t.run_once_at;
-    return { id: t.id, name: t.name || 'Untitled task', schedule: oneTime ? 'One time' : humanizeCron(t.cron_expression),
+    return { id: t.id, name: t.name || 'Untitled task', about: describeTrigger(t), schedule: oneTime ? 'One time' : humanizeCron(t.cron_expression),
       enabled: t.enabled !== false, nextRun: t.next_run_at || t.run_once_at || null, last: last };
+  }
+
+  // Written descriptions for agents whose instructions don't summarize well.
+  var DESCRIPTIONS = {
+    trig_01JNt6adt4hzK39JGjeh9r6J: 'Researches the day\'s AI news with three scouts, writes your AI Brief newsletter, republishes it and emails it to you.',
+    trig_012V1kNzrYBaotooJtEu75fA: 'Checks what you shipped in InvestEdge, Plotted and MarketLens and opens pull requests so your README and site match. Never merges.',
+    trig_01HURaF6FpnLb7h6575NNAS6: 'Health-checks your three live apps and opens or closes GitHub issues when something breaks. Never touches code.'
+  };
+
+  function describeTrigger(t) {
+    if (!t) return '';
+    if (DESCRIPTIONS[t.id]) return DESCRIPTIONS[t.id];
+    var prompt = (t.derived_state && t.derived_state.prompt) || t.prompt || '';
+    var first = String(prompt).trim().split(/\n/)[0];
+    var m = /^(.*?[.!?])(\s|$)/.exec(first);
+    var sentence = (m ? m[1] : first).replace(/\s*\([^)]*\)/g, '').trim();
+    return sentence.length > 160 ? sentence.slice(0, 160) + '…' : sentence;
   }
 
   // One-off reminders a Claude session schedules for itself aren't agents.
@@ -223,7 +240,7 @@
 
   var api = { unwrap: unwrap, statusOf: statusOf, relativeTime: relativeTime, deriveBoard: deriveBoard,
     humanizeCron: humanizeCron, triggerCard: triggerCard, extractTurns: extractTurns,
-    standupMessages: standupMessages, errorView: errorView, mergeEvents: mergeEvents, isAgentTrigger: isAgentTrigger, STATUSES: STATUSES };
+    standupMessages: standupMessages, errorView: errorView, mergeEvents: mergeEvents, isAgentTrigger: isAgentTrigger, describeTrigger: describeTrigger, STATUSES: STATUSES };
   root.HubLogic = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
